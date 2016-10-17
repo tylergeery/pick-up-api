@@ -3,11 +3,11 @@
 FROM golang:1.6.3
 
 # Create a directory inside the container to store all our application and then make it the working directory.
-RUN mkdir -p /go/src/pickup-server
-WORKDIR /go/src/pickup-server
+RUN mkdir -p /go/src/github.com/pick-up-api
+WORKDIR /go/src/github.com/pick-up-api
 
 # Copy the api directory into the container.
-COPY api/ /go/src/pickup-server
+COPY api/ /go/src/github.com/pick-up-api
 
 # Download and install any required third party dependencies into the container.
 RUN go get github.com/codegangsta/gin
