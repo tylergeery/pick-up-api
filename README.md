@@ -11,6 +11,6 @@ docker run -p 3000:3000 -v $(pwd)/api:/go/src/github.com/pick-up-api --name pick
 ```
 
 ### Helpful articles
-[Golang Docker](https://blog.golang.org/docker)
-[Dockerizing Go w/ Local Filesync](https://medium.com/developers-writing/docker-powered-development-environment-for-your-go-app-6185d043ea35#.r58sq9cr2)
-[Architecting Go Web Apps](https://larry-price.com/blog/2015/06/25/architecture-for-a-golang-web-app)
+* [Golang Docker](https://blog.golang.org/docker)
+* [Dockerizing Go w/ Local Filesync](https://medium.com/developers-writing/docker-powered-development-environment-for-your-go-app-6185d043ea35#.r58sq9cr2)
+* [Architecting Go Web Apps](https://larry-price.com/blog/2015/06/25/architecture-for-a-golang-web-app)
