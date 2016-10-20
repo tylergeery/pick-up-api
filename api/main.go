@@ -11,8 +11,10 @@ import (
 func main() {
 
     router := mux.NewRouter().StrictSlash(true)
-    router.HandleFunc("/hello/{name}", Hello)
-    router.HandleFunc("/user/{userId}", controllers.UserProfile)
+    router.HandleFunc("/hello/{name}", Hello).Methods("GET")
+    router.HandleFunc("/user/create", controllers.UserCreate).Methods("POST")
+    router.HandleFunc("/user/{userId}", controllers.UserProfile).Methods("GET")
+
 
     log.Fatal(http.ListenAndServe(":3001", router))
 }
