@@ -1,7 +1,6 @@
 package controllers
 
 import (
-    "fmt"
     "net/http"
     "github.com/gorilla/mux"
     "github.com/pick-up-api/models"
@@ -17,11 +16,10 @@ func UserProfile(w http.ResponseWriter, r *http.Request) {
 
     user, err := models.UserGetById(userId)
 
-    if err != nil {
-        message := fmt.Sprintf("User with id %s could not be found", userId)
-        response.Fail(w, http.StatusNotFound, message)
-    } else {
+    if err == nil {
         response.Success(w, user)
+    } else {
+        response.Fail(w, http.StatusNotFound, err.Error())
     }
 }
 
@@ -36,7 +34,7 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
     if err == nil {
         response.Success(w, user)
     } else {
-        response.Fail(w, http.StatusBadRequest, "User could not be created")
+        response.Fail(w, http.StatusBadRequest, err.Error())
     }
 }
 
@@ -51,7 +49,7 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
      if err == nil {
          response.Success(w, user)
      } else {
-         response.Fail(w, http.StatusBadRequest, "User could not be created")
+         response.Fail(w, http.StatusBadRequest, err.Error())
      }
  }
 
@@ -68,8 +66,8 @@ func UserDelete(w http.ResponseWriter, r *http.Request) {
     }
 
     if err == nil {
-        response.Success(w, struct{message string}{"User successfully removed"})
+        response.Success(w, struct{Message string}{"User successfully removed"})
     } else {
-        response.Fail(w, http.StatusBadRequest, "User could not be be deleted")
+        response.Fail(w, http.StatusBadRequest, err.Error())
     }
 }

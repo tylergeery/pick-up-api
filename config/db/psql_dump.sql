@@ -3,7 +3,8 @@ CREATE TABLE users (
     email VARCHAR(50),
     password VARCHAR(60),
     name VARCHAR(50),
-    facebook_id int,
+    facebook_id INT,
+    is_active INT DEFAULT 1,
     created_at TIMESTAMP,
     updated_at TIMESTAMP
 );

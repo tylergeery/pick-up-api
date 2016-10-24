@@ -12,9 +12,14 @@ func main() {
 
     router := mux.NewRouter().StrictSlash(true)
     router.HandleFunc("/hello/{name}", Hello).Methods("GET")
+
+    // User API
     router.HandleFunc("/user/create", controllers.UserCreate).Methods("POST")
+    router.HandleFunc("/user/update", controllers.UserUpdate).Methods("POST")
+    router.HandleFunc("/user/delete", controllers.UserDelete).Methods("POST")
     router.HandleFunc("/user/{userId}", controllers.UserProfile).Methods("GET")
 
+    // Event API
 
     log.Fatal(http.ListenAndServe(":3001", router))
 }
