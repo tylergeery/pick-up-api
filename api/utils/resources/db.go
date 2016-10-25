@@ -1,6 +1,7 @@
 package resources
 
 import (
+    "os"
     "fmt"
     "log"
     "strconv"
@@ -16,7 +17,8 @@ func DB() *sql.DB {
     db, err := sql.Open(
         "postgres",
         fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable",
-            "raccoon", "pickEmUp", "pickup-postgres", "pickup"))
+            os.Getenv("DB_USER"), os.Getenv("DB_PASS"),
+            os.Getenv("DB_HOST"), os.Getenv("DB_TABLE")))
 
     if err != nil {
         log.Fatal(err)
@@ -25,6 +27,9 @@ func DB() *sql.DB {
     return db
 }
 
+/**
+ * Get s SQL Stub for variable binding
+ */
 func SqlStub(length int) string {
     var stub string
 
