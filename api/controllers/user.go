@@ -1,6 +1,7 @@
 package controllers
 
 import (
+    "errors"
     "net/http"
     "github.com/gorilla/mux"
     "github.com/pick-up-api/models"
@@ -42,9 +43,16 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
  * Update a user
  */
  func UserUpdate(w http.ResponseWriter, r *http.Request) {
+     var err error
+     var user models.User
+
      r.ParseForm()
 
-     user, err := models.UserUpdateProfile(r.Form)
+     if userId, exists := r.Form["userId"]; exists {
+         user, err = models.UserUpdateProfile(userId[0], r.Form)
+     } else {
+         err = errors.New("User ID not specified")
+     }
 
      if err == nil {
          response.Success(w, user)
@@ -61,8 +69,10 @@ func UserDelete(w http.ResponseWriter, r *http.Request) {
 
     r.ParseForm()
 
-    if val, exists := r.Form["userId"]; exists {
-        err = models.UserDeleteProfile(val[0])
+    if userId, exists := r.Form["userId"]; exists {
+        err = models.UserDeleteProfile(userId[0])
+    } else {
+        err = errors.New("User ID not specified")
     }
 
     if err == nil {

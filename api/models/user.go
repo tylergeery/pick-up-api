@@ -1,10 +1,12 @@
 package models
 
 import (
+    "fmt"
     "log"
     "errors"
     "reflect"
-    "github.com/pick-up-api/utils/connections"
+    "strings"
+    "github.com/pick-up-api/utils/resources"
     "github.com/pick-up-api/utils/validation"
     "golang.org/x/crypto/bcrypt"
 )
@@ -12,22 +14,25 @@ import (
 const BCryptHashCost = 10
 
 type User struct {
-    Id int64 `json:"id"`
-    Email string `json:"email"`
-    password string `json:"-"` // omit
-    Name string `json:"name"`
-    Active int64 `json:"active"`
+    Id int64 `json:"id" db:"id"`
+    Email string `json:"email" db:"email"`
+    password string `json:"-" db:"password"` // omit
+    Name string `json:"name" db:"name"`
+    Active int64 `json:"active" db:"is_active"`
 }
 
 func (u *User) Save() (int64, error) {
     var id int64
 
-    db := connections.DB()
+    columns, values := u.GetUserColumnStringAndValues(false, true)
+    values = append(values, u.GetPassword())
+    db := resources.DB()
+    query := fmt.Sprintf(
+        `   INSERT INTO users (%s, password, created_at)
+            VALUES (%s, NOW()) RETURNING id
+        `, columns, resources.SqlStub(len(values)))
 
-    err := db.QueryRow(
-        `INSERT INTO users (name, email, password)
-        VALUES ($1, $2, $3) RETURNING id`,
-        u.Name, u.Email, u.GetPassword()).Scan(&id)
+    err := db.QueryRow(query, values...).Scan(&id)
 
     u.Id = id
 
@@ -35,12 +40,15 @@ func (u *User) Save() (int64, error) {
 }
 
 func (u *User) Update() error {
-    db := connections.DB()
+    columns, values := u.GetUserColumnStringAndValues(false, false)
+    db := resources.DB()
+    query := fmt.Sprintf(
+        `   UPDATE users
+            SET (%s) = (%s)
+            WHERE id = %d
+        `, columns, resources.SqlStub(len(values)), u.Id)
 
-    _, err := db.Exec(
-        `INSERT INTO users (name, email, password)
-        VALUES ($1, $2, $3)`,
-        u.Name, u.Email, u.GetPassword())
+    _, err := db.Exec(query, values...)
 
     return err
 }
@@ -53,26 +61,36 @@ func (u *User) GetPassword() string {
     return u.password
 }
 
-func (u *User) GetUserColumnStringAndValues() (string, []interface{}) {
+func (u *User) GetUserColumnStringAndValues(includeID, includePW bool) (string, []interface{}) {
     var columns string
     var values []interface{}
 
-    userValue := reflect.ValueOf(u)
-    userElem := userValue.Elem()
+    userElem := reflect.ValueOf(u).Elem()
+    userType := userElem.Type()
 
     // Iterate over fields
     for i := 0; i < userElem.NumField(); i++ {
-        fieldKey := userElem.Field(i)
-        columns += " " + ""
-        values = append(values, fieldKey)
+        columnName := userType.Field(i).Tag.Get("db")
+
+        if !includeID && columnName == "id" {
+            continue
+        }
+
+        if columnName == "password" {
+            continue
+        }
+
+        columns += fmt.Sprintf("%s, ", userType.Field(i).Tag.Get("db"))
+        values = append(values, userElem.Field(i).Interface())
     }
+
+    columns = strings.TrimRight(columns, ", ")
 
     return columns, values
 }
 
-func createUser(userPostData map[string][]string) (User, error) {
+func (u *User) Build(userPostData map[string][]string) error {
     var err error
-    var user User
 
     for k, v := range userPostData {
         switch k {
@@ -81,9 +99,8 @@ func createUser(userPostData map[string][]string) (User, error) {
 
             if !validation.IsNonEmptyString(name) {
                 err = errors.New("Name cannot be empty.")
-                break
             } else {
-                user.Name = name
+                u.Name = name
             }
         case "password":
             var valid bool
@@ -93,8 +110,8 @@ func createUser(userPostData map[string][]string) (User, error) {
             if valid {
                 hash, hashError := bcrypt.GenerateFromPassword([]byte(pw), BCryptHashCost)
 
-                if hashError != nil {
-                    user.SetPassword(string(hash))
+                if hashError == nil {
+                    u.SetPassword(string(hash))
                 } else {
                     err = errors.New("Password is invalid")
                 }
@@ -105,7 +122,7 @@ func createUser(userPostData map[string][]string) (User, error) {
             valid, err = validation.IsValidEmail(email)
 
             if valid {
-                user.Email = email
+                u.Email = email
             }
         default:
             // TODO, probably ignore
@@ -116,12 +133,12 @@ func createUser(userPostData map[string][]string) (User, error) {
         }
     }
 
-    return user, err
+    return err
 }
 
 func UserGetById(id string) (User, error) {
     var user User
-    db := connections.DB()
+    db := resources.DB()
 
 	rows, err := db.Query("SELECT id, email, name, is_active FROM users WHERE id = $1", id)
     if err != nil {
@@ -155,24 +172,24 @@ func UserGetById(id string) (User, error) {
 }
 
 func UserCreateProfile(userPostData map[string][]string) (User, error) {
-    var id int64
+    var user User
 
-    user, err := createUser(userPostData)
+    err := user.Build(userPostData)
+    user.Active = 1
 
     if err == nil {
-        id, err = user.Save()
-
-        if err == nil {
-            user.Id = id
-        }
+        _, err = user.Save()
     }
 
     return user, err
 }
 
-func UserUpdateProfile(userPostData map[string][]string) (User, error) {
-    user, err := createUser(userPostData)
+func UserUpdateProfile(userId string, userPostData map[string][]string) (User, error) {
+    user, err := UserGetById(userId)
 
+    if err == nil {
+        err = user.Build(userPostData)
+    }
     if err == nil {
         err = user.Update()
     }
@@ -181,13 +198,12 @@ func UserUpdateProfile(userPostData map[string][]string) (User, error) {
 }
 
 func UserDeleteProfile(userId string) error {
-    db := connections.DB()
-
-    _, err := db.Query("UPDATE users SET is_active = 0 WHERE id = $1", userId)
-
-    if err != nil {
-        log.Fatal(err)
-    }
+    db := resources.DB()
+    _, err := db.Query(
+        `   UPDATE users
+            SET is_active = 0, updated_at = NOW()
+            WHERE id = $1
+        `, userId)
 
     return err
 }
