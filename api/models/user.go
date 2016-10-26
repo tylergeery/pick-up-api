@@ -104,30 +104,31 @@ func (u *User) Build(userPostData map[string][]string) error {
             }
         case "password":
             var valid bool
-            var pw string = v[0]
-            valid, err = validation.IsValidPassword(pw)
+            pw := v[0]
 
-            if valid {
+
+            if valid, err = validation.IsValidPassword(pw); valid {
                 hash, hashError := bcrypt.GenerateFromPassword([]byte(pw), BCryptHashCost)
 
-                if hashError == nil {
-                    u.SetPassword(string(hash))
+                if hashError != nil {
+                    err = errors.New("Password is invalid.")
                 } else {
-                    err = errors.New("Password is invalid")
+                    u.SetPassword(string(hash))
                 }
             }
         case "email":
-            var valid bool
             email := v[0]
-            valid, err = validation.IsValidEmail(email)
 
-            if valid {
+            if !validation.IsValidEmail(email) {
+                err = errors.New("Email is invalid.")
+            } else {
                 u.Email = email
             }
         default:
             // TODO, probably ignore
         }
 
+        // return err as soon as one arises
         if err != nil {
             break
         }

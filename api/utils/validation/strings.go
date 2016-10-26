@@ -2,6 +2,7 @@ package validation
 
 import (
     "errors"
+    "github.com/asaskevich/govalidator"
 )
 
 /**
@@ -13,20 +14,21 @@ const MinPasswordLength = 8
  * Checks for non empty string
  */
 func IsNonEmptyString(str string) bool {
-    return true
+    return (str != "")
 }
 
 /**
  * Checks for valid email
  */
-func IsValidEmail(str string) (bool, error) {
-    var err error
-
-    return true, err
+func IsValidEmail(email string) bool {
+    return (govalidator.IsEmail(email))
 }
 
 /**
  * Checks for valid password
+ *
+ * Requirements:
+ *  - Must be at least MinPasswordLength characters
  */
 func IsValidPassword(pw string) (bool, error) {
     var err error
@@ -43,7 +45,7 @@ func IsValidPassword(pw string) (bool, error) {
 }
 
 /**
- * Checks if the string is of valid length
+ * Checks if the string is of valid length (in characters)
  */
 func IsStringOfLength(str string, length int) bool {
     runes := []rune(str)
