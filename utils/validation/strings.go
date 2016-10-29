@@ -11,6 +11,12 @@ import (
 const MinPasswordLength = 8
 
 /**
+ * Password validation errors
+ */
+const PasswordEmpty string = "Password is blank."
+const PasswordShort string = "Password is too short."
+
+/**
  * Checks for non empty string
  */
 func IsNonEmptyString(str string) bool {
@@ -34,11 +40,11 @@ func IsValidPassword(pw string) (bool, error) {
     var err error
 
     if !IsNonEmptyString(pw) {
-        return false, errors.New("Password is blank.")
+        return false, errors.New(PasswordEmpty)
     }
 
     if !IsStringOfLength(pw, MinPasswordLength) {
-        return false, errors.New("Password is too short.")
+        return false, errors.New(PasswordShort)
     }
 
     return true, err

@@ -16,7 +16,10 @@ Local API server should be available at <docker-ip>:3000
 Confirm its available at <docker-ip>:3000/hello/world
 
 ## Running Test Suite
-TODO
+```
+docker exec pickup-server go get github.com/stretchr/testify/assert
+docker exec pickup-server go test  ./tests/utils/validation/strings_test.go
+```
 
 ### Helpful articles
 * [Golang Docker](https://blog.golang.org/docker)
