@@ -7,7 +7,7 @@ RUN mkdir -p /go/src/github.com/pick-up-api
 WORKDIR /go/src/github.com/pick-up-api
 
 # Copy the api directory into the container.
-COPY api/ /go/src/github.com/pick-up-api
+COPY ./ /go/src/github.com/pick-up-api
 
 # Download and install any required third party dependencies into the container.
 RUN go get github.com/codegangsta/gin

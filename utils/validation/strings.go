@@ -8,13 +8,7 @@ import (
 /**
  * Minimum password length for new users
  */
-const MinPasswordLength int = 8
-
-/**
- * Password validation errors
- */
-const PasswordEmpty string = "Password is blank."
-const PasswordShort string = "Password is too short."
+const MinPasswordLength = 8
 
 /**
  * Checks for non empty string
@@ -40,11 +34,11 @@ func IsValidPassword(pw string) (bool, error) {
     var err error
 
     if !IsNonEmptyString(pw) {
-        return false, errors.New(PasswordEmpty)
+        return false, errors.New("Password is blank.")
     }
 
     if !IsStringOfLength(pw, MinPasswordLength) {
-        return false, errors.New(PasswordShort)
+        return false, errors.New("Password is too short.")
     }
 
     return true, err
