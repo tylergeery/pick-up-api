@@ -63,9 +63,9 @@ func TestIsValidPassword(t *testing.T) {
     assert.False(t, unicodeShortFailure, "This password is not of valid length")
 
     // Test Appropriate Errors
-    assert.Equal(t, validation.PasswordEmpty, nilError.Error(), "Expected an empty password error")
-    assert.Equal(t, validation.PasswordShort, shortError.Error(), "Expected a password too short error")
-    assert.Equal(t, validation.PasswordShort, unicodeShortError.Error(), "Expected a password too short error")
+    assert.Equal(t, "Password is blank.", nilError.Error(), "Expected an empty password error")
+    assert.Equal(t, "Password is too short.", shortError.Error(), "Expected a password too short error")
+    assert.Equal(t, "Password is too short.", unicodeShortError.Error(), "Expected a password too short error")
 
     // Test Valid Emails
     assert.True(t, validSuccess, "This is a valid password")
@@ -77,5 +77,20 @@ func TestIsValidPassword(t *testing.T) {
 }
 
 func TestIsStringOfLength(t *testing.T) {
-    // TODO
+    var nilString string
+    var shortString string = "test"
+    var unicodeString string = "ўСЋР»Р"
+
+    // Test Invalid Calls
+    assert.False(t, validation.IsStringOfLength(nilString, 1), "Nil string does not have length of 1")
+    assert.False(t, validation.IsStringOfLength(shortString, 5), "Short string does not have length of 5")
+    assert.False(t, validation.IsStringOfLength(unicodeString, 7), "Unicode string does not have length of 7")
+
+    // Test Valid Calls
+    for i :=0; i < 5; i++ {
+        assert.True(t, validation.IsStringOfLength(shortString, i), "Short string does have this length")
+    }
+    for i :=0; i < 7; i++ {
+        assert.True(t, validation.IsStringOfLength(unicodeString, i), "Unicode string does have this length")
+    }
 }
