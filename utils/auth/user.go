@@ -19,12 +19,13 @@ func ValidateUserToken(stringToken string, userId int) bool {
     var valid bool = true
 
     claims, _ := ExtractToken(stringToken)
+    userIdFromClaims := int(claims["userId"].(float64))
 
     if (claims["type"] != "user") {
         valid = false
     }
 
-    if (claims["userId"] != userId) {
+    if (userIdFromClaims != userId) {
         valid = false
     }
 

@@ -9,6 +9,9 @@ WORKDIR /go/src/github.com/pick-up-api
 # Copy the api directory into the container.
 COPY ./ /go/src/github.com/pick-up-api
 
+# Download and install test dependencies
+RUN go get -t ./tests/...
+
 # Download and install any required third party dependencies into the container.
 RUN go get github.com/codegangsta/gin
 RUN go-wrapper download
