@@ -10,8 +10,7 @@ func CreateUserToken(userId int, permissions int) (string, error) {
         "userId": userId,
         "permissions": permissions,
         "ts": time.Now().Unix(),
-        "type": "user"
-    }
+        "type": "user"}
 
     return CreateToken(claims)
 }
