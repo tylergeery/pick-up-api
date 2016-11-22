@@ -5,7 +5,7 @@ import (
     "github.com/dgrijalva/jwt-go"
 )
 
-func CreateUserToken(userId int, permissions int) (string, error) {
+func CreateUserToken(userId int64, permissions int) (string, error) {
     claims := jwt.MapClaims{
         "userId": userId,
         "permissions": permissions,
@@ -15,11 +15,11 @@ func CreateUserToken(userId int, permissions int) (string, error) {
     return CreateToken(claims)
 }
 
-func ValidateUserToken(stringToken string, userId int) bool {
+func ValidateUserToken(stringToken string, userId int64) bool {
     var valid bool = true
 
     claims, _ := ExtractToken(stringToken)
-    userIdFromClaims := int(claims["userId"].(float64))
+    userIdFromClaims := int64(claims["userId"].(float64))
 
     if (claims["type"] != "user") {
         valid = false

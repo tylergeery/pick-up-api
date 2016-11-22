@@ -8,6 +8,7 @@ import (
     "strings"
     "github.com/pick-up-api/utils/resources"
     "github.com/pick-up-api/utils/validation"
+    "github.com/pick-up-api/utils/auth"
     "golang.org/x/crypto/bcrypt"
 )
 
@@ -19,6 +20,7 @@ type User struct {
     password string `json:"-" db:"password"` // omit
     Name string `json:"name" db:"name"`
     Active int64 `json:"active" db:"is_active"`
+    Token string `json:"token" db:"-"`
 }
 
 func (u *User) Save() (int64, error) {
@@ -76,7 +78,7 @@ func (u *User) GetUserColumnStringAndValues(includeID, includePW bool) (string, 
             continue
         }
 
-        if columnName == "password" {
+        if columnName == "password" || columnName == "-" {
             continue
         }
 
@@ -137,6 +139,14 @@ func (u *User) Build(userPostData map[string][]string) error {
     return err
 }
 
+func (u *User) AddToken() {
+    tokenString, err := auth.CreateUserToken(u.Id, 1)
+
+    if err == nil {
+        u.Token = tokenString
+    }
+}
+
 func UserGetById(id string) (User, error) {
     var user User
     db := resources.DB()
@@ -154,7 +164,12 @@ func UserGetById(id string) (User, error) {
             log.Fatal(err)
         }
 
-        user = User{id, email, "secret", name, active}
+        user = User{}
+        user.Id = id
+        user.Email = email
+        user.password = "secret"
+        user.Name = name
+        user.Active = active
     }
 
     if err := rows.Err(); err != nil {

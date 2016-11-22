@@ -28,9 +28,17 @@ func UserProfile(w http.ResponseWriter, r *http.Request) {
  * Create a user
  */
 func UserCreate(w http.ResponseWriter, r *http.Request) {
+    var err error
+    var user models.User
+
     r.ParseForm()
 
-    user, err := models.UserCreateProfile(r.Form)
+    if _, exists := r.Form["email"]; exists {
+        user, err = models.UserCreateProfile(r.Form)
+        user.AddToken()
+    } else {
+        err = errors.New("Users require an email")
+    }
 
     if err == nil {
         response.Success(w, user)
