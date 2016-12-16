@@ -1,4 +1,4 @@
-package pickUpValidationTests
+package authTests
 
 import (
     "unicode/utf8"
@@ -9,8 +9,8 @@ import (
 
 func TestUserTokens(t *testing.T) {
     // test strings
-    userId := 1234
-    userIdTwo := 5678123412341234
+    const userId int64 = 1234
+    const userIdTwo int64 = 5678123412341234
     permissions := 1
     permissionsTwo := 3
 

@@ -1,4 +1,4 @@
-package pickUpValidationTests
+package validationTests
 
 import (
     "testing"

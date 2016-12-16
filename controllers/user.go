@@ -33,11 +33,18 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 
     r.ParseForm()
 
-    if _, exists := r.Form["email"]; exists {
+    _, emailExists := r.Form["email"];
+    _, pwExists := r.Form["email"];
+
+    if emailExists && pwExists {
         user, err = models.UserCreateProfile(r.Form)
         user.AddToken()
     } else {
-        err = errors.New("Users require an email")
+        if emailExists {
+            err = errors.New("Users require an email")
+        } else {
+            err = errors.New("Users require a password")
+        }
     }
 
     if err == nil {

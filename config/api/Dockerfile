@@ -10,7 +10,7 @@ WORKDIR /go/src/github.com/pick-up-api
 COPY ./ /go/src/github.com/pick-up-api
 
 # Download and install test dependencies
-RUN go get -t ./tests/...
+RUN go get github.com/stretchr/testify/assert
 
 # Download and install any required third party dependencies into the container.
 RUN go get github.com/codegangsta/gin
