@@ -6,6 +6,7 @@ import (
     "net/http"
     "github.com/gorilla/mux"
     "github.com/pick-up-api/controllers"
+    "github.com/pick-up-api/middleware"
 )
 
 func main() {
@@ -21,6 +22,7 @@ func main() {
 
     // Event API
 
+    // auth middleware
     log.Fatal(http.ListenAndServe(":3001", router))
 }
 
