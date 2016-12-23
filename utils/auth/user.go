@@ -18,16 +18,33 @@ func CreateUserToken(userId int64, permissions int) (string, error) {
 func ValidateUserToken(stringToken string, userId int64) bool {
     var valid bool = true
 
-    claims, _ := ExtractToken(stringToken)
-    userIdFromClaims := int64(claims["userId"].(float64))
+    claims, success := ExtractToken(stringToken)
 
-    if (claims["type"] != "user") {
+    if !success || claims["userId"] == nil {
         valid = false
-    }
+    } else {
+        userIdFromClaims := int64(claims["userId"].(float64))
 
-    if (userIdFromClaims != userId) {
-        valid = false
+        if (claims["type"] != "user") {
+            valid = false
+        }
+
+        if (userIdFromClaims != userId) {
+            valid = false
+        }
     }
 
     return valid
+}
+
+func GetUserIdFromToken(stringToken string) int64, bool {
+    claims, success := ExtractToken(stringToken)
+
+    if !success || claims["userId"] == nil {
+        return 0, false
+    } else {
+        userIdFromClaims := int64(claims["userId"].(float64))
+
+        return userIdFromClaims, true
+    }
 }
