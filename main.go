@@ -12,11 +12,11 @@ import (
 func main() {
 
     router := mux.NewRouter().StrictSlash(true)
-    router.Handle("/hello/{name}", Hello).Methods("GET")
+    router.HandleFunc("/hello/{name}", Hello).Methods("GET")
 
     // User API
     router.HandleFunc("/user/create", controllers.UserCreate).Methods("POST")
-    router.HandleFunc("/user/update", auth(controllers.UserUpdate)).Methods("POST")
+    router.Handle("/user/update", auth(controllers.UserUpdate)).Methods("POST")
     router.HandleFunc("/user/delete", controllers.UserDelete).Methods("POST")
     router.HandleFunc("/user/{userId}", controllers.UserProfile).Methods("GET")
 
@@ -34,5 +34,5 @@ func Hello(w http.ResponseWriter, r *http.Request) {
 func auth(cb func(w http.ResponseWriter, r *http.Request)) http.Handler {
     handler := http.HandlerFunc(cb)
 
-    return middleware.setUser(handler)
+    return middleware.SetUser(handler)
 }

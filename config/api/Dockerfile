@@ -1,6 +1,6 @@
 # Base this docker container off the official golang docker image.
 # Docker containers inherit everything from their base.
-FROM golang:1.6.3
+FROM golang:1.7.4
 
 # Create a directory inside the container to store all our application and then make it the working directory.
 RUN mkdir -p /go/src/github.com/pick-up-api

@@ -37,7 +37,7 @@ func ValidateUserToken(stringToken string, userId int64) bool {
     return valid
 }
 
-func GetUserIdFromToken(stringToken string) int64, bool {
+func GetUserIdFromToken(stringToken string) (int64, bool) {
     claims, success := ExtractToken(stringToken)
 
     if !success || claims["userId"] == nil {
