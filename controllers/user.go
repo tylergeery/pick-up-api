@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -64,7 +63,12 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 func UserUpdate(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var user models.User
-	requestId := r.Context().Value(auth.USER_ID_KEY).(int64)
+	var requestId int64
+	errorResponseCode := http.StatusBadRequest
+
+	if id := r.Context().Value(auth.USER_ID_KEY); id != nil {
+		requestId = id.(int64)
+	}
 
 	r.ParseForm()
 
@@ -74,7 +78,7 @@ func UserUpdate(w http.ResponseWriter, r *http.Request) {
 		if userId == requestId {
 			user, err = models.UserUpdateProfile(userId, r.Form)
 		} else {
-			log.Println("Auth ID: ", requestId)
+			errorResponseCode = http.StatusForbidden
 			err = errors.New("You are not authorized to update this user")
 		}
 	} else {
@@ -84,7 +88,7 @@ func UserUpdate(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		response.Success(w, user)
 	} else {
-		response.Fail(w, http.StatusBadRequest, err.Error())
+		response.Fail(w, errorResponseCode, err.Error())
 	}
 }
 
@@ -96,8 +100,21 @@ func UserDelete(w http.ResponseWriter, r *http.Request) {
 
 	r.ParseForm()
 
-	if userId, exists := r.Form["userId"]; exists {
-		err = models.UserDeleteProfile(userId[0])
+	var requestId int64
+	errorResponseCode := http.StatusBadRequest
+
+	if id := r.Context().Value(auth.USER_ID_KEY); id != nil {
+		requestId = id.(int64)
+	}
+
+	if userIdArray, exists := r.Form["userId"]; exists {
+		userId, _ := strconv.ParseInt(userIdArray[0], 10, 64)
+
+		if requestId == userId {
+			err = models.UserDeleteProfile(userId)
+		} else {
+			err = errors.New("You are not authorized to remove this user")
+		}
 	} else {
 		err = errors.New("User ID not specified")
 	}
@@ -105,6 +122,6 @@ func UserDelete(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		response.Success(w, struct{ Message string }{"User successfully removed"})
 	} else {
-		response.Fail(w, http.StatusBadRequest, err.Error())
+		response.Fail(w, errorResponseCode, err.Error())
 	}
 }

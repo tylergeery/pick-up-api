@@ -1,6 +1,7 @@
 package models
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -16,12 +17,15 @@ import (
 const BCryptHashCost = 10
 
 type User struct {
-	Id       int64  `json:"id" db:"id"`
-	Email    string `json:"email" db:"email"`
-	password string `json:"-" db:"password"` // omit
-	Name     string `json:"name" db:"name"`
-	Active   int64  `json:"active" db:"is_active"`
-	Token    string `json:"token,omitempty" db:"-"`
+	Id         int64         `json:"id" db:"id"`
+	Email      string        `json:"email" db:"email"`
+	password   string        `json:"-" db:"password"` // omit
+	Name       string        `json:"name" db:"name"`
+	FacebookId sql.NullInt64 `json:"facebook_id,omitempty" db:"facebook_id"`
+	Active     int           `json:"active" db:"is_active"`
+	Token      string        `json:"token,omitempty" db:"-"`
+	CreatedAt  string        `json:"created_at,omitempty" db:"-"`
+	UpdatedAt  string        `json:"updated_at,omitempty" db:"-"`
 }
 
 func (u *User) Save() (int64, error) {
@@ -47,7 +51,7 @@ func (u *User) Update() error {
 	db := resources.DB()
 	query := fmt.Sprintf(
 		`   UPDATE users
-            SET (%s) = (%s)
+            SET (%s, updated_at) = (%s, NOW())
             WHERE id = %d
         `, columns, resources.SqlStub(len(values)), u.Id)
 
@@ -151,16 +155,18 @@ func UserGetById(id int64) (User, error) {
 	var user User
 	db := resources.DB()
 
-	rows, err := db.Query("SELECT id, email, name, is_active FROM users WHERE id = $1", id)
+	rows, err := db.Query("SELECT id, email, name, facebook_id, is_active, created_at, updated_at FROM users WHERE id = $1", id)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var id, active int64
-		var email, name string
+		var id int64
+		var facebook_id sql.NullInt64
+		var email, name, created_at, updated_at string
+		var is_active int
 
-		if err := rows.Scan(&id, &email, &name, &active); err != nil {
+		if err := rows.Scan(&id, &email, &name, &facebook_id, &is_active, &created_at, &updated_at); err != nil {
 			log.Fatal(err)
 		}
 
@@ -169,7 +175,10 @@ func UserGetById(id int64) (User, error) {
 		user.Email = email
 		user.password = "secret"
 		user.Name = name
-		user.Active = active
+		user.FacebookId = facebook_id
+		user.Active = is_active
+		user.CreatedAt = created_at
+		user.UpdatedAt = updated_at
 	}
 
 	if err := rows.Err(); err != nil {
@@ -213,7 +222,7 @@ func UserUpdateProfile(userId int64, userPostData map[string][]string) (User, er
 	return user, err
 }
 
-func UserDeleteProfile(userId string) error {
+func UserDeleteProfile(userId int64) error {
 	db := resources.DB()
 	_, err := db.Query(
 		`   UPDATE users
