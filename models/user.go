@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pick-up-api/utils/auth"
+	"github.com/pick-up-api/utils/messaging"
 	"github.com/pick-up-api/utils/resources"
 	"github.com/pick-up-api/utils/types"
 	"github.com/pick-up-api/utils/validation"
@@ -108,7 +109,7 @@ func (u *User) Build(userPostData map[string][]string) error {
 			name := v[0]
 
 			if !validation.IsNonEmptyString(name) {
-				err = errors.New("Name cannot be empty.")
+				err = errors.New(messaging.USER_NAME_EMPTY)
 			} else {
 				u.Name = name
 			}
@@ -120,7 +121,7 @@ func (u *User) Build(userPostData map[string][]string) error {
 				hash, hashError := bcrypt.GenerateFromPassword([]byte(pw), BCryptHashCost)
 
 				if hashError != nil {
-					err = errors.New("Password is invalid.")
+					err = errors.New(messaging.USER_PASSWORD_INVALID)
 				} else {
 					u.SetPassword(string(hash))
 				}
@@ -129,7 +130,7 @@ func (u *User) Build(userPostData map[string][]string) error {
 			email := v[0]
 
 			if !validation.IsValidEmail(email) {
-				err = errors.New("Email is invalid.")
+				err = errors.New(messaging.USER_EMAIL_INVALID)
 			} else {
 				u.Email = email
 			}

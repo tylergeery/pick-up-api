@@ -9,6 +9,7 @@ import (
 	"github.com/pick-up-api/models"
 	"github.com/pick-up-api/services"
 	"github.com/pick-up-api/utils/auth"
+	"github.com/pick-up-api/utils/messaging"
 	"github.com/pick-up-api/utils/response"
 )
 
@@ -45,9 +46,9 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 		user.AddToken()
 	} else {
 		if !emailExists {
-			err = errors.New("Users require an email")
+			err = errors.New(messaging.USER_REQUIRES_EMAIL)
 		} else {
-			err = errors.New("Users require a password")
+			err = errors.New(messaging.USER_REQUIRES_PASSWORD)
 		}
 	}
 
@@ -80,10 +81,10 @@ func UserUpdate(w http.ResponseWriter, r *http.Request) {
 			user, err = services.UserUpdateProfile(userId, r.Form)
 		} else {
 			errorResponseCode = http.StatusForbidden
-			err = errors.New("You are not authorized to update this user")
+			err = errors.New(messaging.USER_UNAUTHORIZED_UPDATE)
 		}
 	} else {
-		err = errors.New("User ID not specified")
+		err = errors.New(messaging.USER_ID_NOT_SPECIFIED)
 	}
 
 	if err == nil {
@@ -114,10 +115,10 @@ func UserDelete(w http.ResponseWriter, r *http.Request) {
 		if requestId == userId {
 			err = services.UserDeleteProfile(userId)
 		} else {
-			err = errors.New("You are not authorized to remove this user")
+			err = errors.New(messaging.USER_UNAUTHORIZED_UPDATE)
 		}
 	} else {
-		err = errors.New("User ID not specified")
+		err = errors.New(messaging.USER_ID_NOT_SPECIFIED)
 	}
 
 	if err == nil {

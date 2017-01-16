@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/pick-up-api/models"
+	"github.com/pick-up-api/utils/messaging"
 	"github.com/pick-up-api/utils/resources"
 	"github.com/pick-up-api/utils/types"
 )
@@ -44,11 +45,11 @@ func UserGetById(id int64) (models.User, error) {
 	}
 
 	if user.Id == 0 && err == nil {
-		err = errors.New("User could not be found")
+		err = errors.New(messaging.USER_NOT_FOUND)
 	}
 
 	if err == nil && user.Active != 1 {
-		err = errors.New("User does not have an active account")
+		err = errors.New(messaging.USER_NOT_ACTIVE)
 	}
 
 	return user, err
@@ -88,11 +89,11 @@ func UserGetByEmail(email string) (models.User, error) {
 	}
 
 	if user.Id == 0 && err == nil {
-		err = errors.New("User could not be found")
+		err = errors.New(messaging.USER_NOT_FOUND)
 	}
 
 	if err == nil && user.Active != 1 {
-		err = errors.New("User does not have an active account")
+		err = errors.New(messaging.USER_NOT_FOUND)
 	}
 
 	return user, err
@@ -107,10 +108,9 @@ func UserCreateProfile(userPostData map[string][]string) (models.User, error) {
 
 	if err == nil {
 		userWithEmail, _ = UserGetByEmail(user.Email)
-		log.Printf("Looking for user with email: %s", user.Email)
 
 		if userWithEmail.Id != 0 {
-			err = errors.New("There exists an account with this email")
+			err = errors.New(messaging.USER_EMAIL_EXISTS)
 		}
 	}
 

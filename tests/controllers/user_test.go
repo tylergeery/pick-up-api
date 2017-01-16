@@ -14,7 +14,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/pick-up-api/router"
+	"github.com/pick-up-api/utils/messaging"
 	"github.com/pick-up-api/utils/resources"
+	"github.com/pick-up-api/utils/validation"
 )
 
 type user struct {
@@ -91,8 +93,13 @@ func TestCreateUser(t *testing.T) {
 
 	userWithInvalidEmail := url.Values{}
 	userWithInvalidEmail.Add("email", "test.test")
-	userWithInvalidEmail.Add("password", "secret")
+	userWithInvalidEmail.Add("password", "secret555")
 	userWithInvalidEmail.Add("name", "Tester")
+
+	userWithInvalidPassword := url.Values{}
+	userWithInvalidPassword.Add("email", "test.test@test.com")
+	userWithInvalidPassword.Add("password", "secret")
+	userWithInvalidPassword.Add("name", "Tester")
 
 	userWithoutPassword := url.Values{}
 	userWithoutPassword.Add("email", "test.test")
@@ -103,12 +110,23 @@ func TestCreateUser(t *testing.T) {
 	user.Add("password", "secret555")
 	user.Add("name", "Tester")
 
-	fails := []url.Values{emptyUser, userWithoutEmail, userWithInvalidEmail, userWithoutPassword}
+	fails := []url.Values{
+		emptyUser,
+		userWithoutEmail,
+		userWithInvalidEmail,
+		userWithInvalidPassword,
+		userWithoutPassword}
+	failMessages := []string{
+		messaging.USER_REQUIRES_EMAIL,
+		messaging.USER_REQUIRES_EMAIL,
+		messaging.USER_EMAIL_INVALID,
+		validation.PasswordShort,
+		messaging.USER_REQUIRES_PASSWORD}
 	successes := []url.Values{user}
 
 	// Perform && Assert
 	// test invalid params
-	for _, invalidUser := range fails {
+	for i, invalidUser := range fails {
 		invalidCreateRecorder := httptest.NewRecorder()
 		invalidReq, invalidErr := http.NewRequest(
 			"POST",
@@ -119,6 +137,10 @@ func TestCreateUser(t *testing.T) {
 		invalidReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		handler.ServeHTTP(invalidCreateRecorder, invalidReq)
 		validateResponseCode(t, http.StatusBadRequest, invalidCreateRecorder.Result().StatusCode)
+
+		invalidCreateResponse := getResponse(t, invalidCreateRecorder.Body.Bytes())["response"].(map[string]interface{})
+		validateResponseMessage(t, failMessages[i], invalidCreateResponse["message"].(string))
+		log.Printf("Fail message: %s\n", invalidCreateResponse["message"].(string))
 	}
 
 	// test valid user json
@@ -177,6 +199,9 @@ func TestCreateUpdateAndDeleteUser(t *testing.T) {
 	handler.ServeHTTP(invalidUpdateRecorder, invalidUpdateReq)
 	validateResponseCode(t, http.StatusForbidden, invalidUpdateRecorder.Result().StatusCode)
 
+	invalidTokenResponse := getResponse(t, invalidUpdateRecorder.Body.Bytes())["response"].(map[string]interface{})
+	validateResponseMessage(t, messaging.USER_UNAUTHORIZED_UPDATE, invalidTokenResponse["message"].(string))
+
 	// handle successful response
 	updateRecorder := httptest.NewRecorder()
 	updateReq, updateErr := http.NewRequest(
@@ -184,7 +209,7 @@ func TestCreateUpdateAndDeleteUser(t *testing.T) {
 		userEndpoint+"/update",
 		bytes.NewBufferString(user.Encode()))
 
-	// handle error of invalid token
+	// handle successful update
 	errorIfExists(t, updateErr)
 	updateReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	updateReq.Header.Set("Authorization", "Bearer "+responseUser.user.token)
@@ -208,7 +233,6 @@ func TestCreateUpdateAndDeleteUser(t *testing.T) {
 	deleteReq.Header.Set("Authorization", "Bearer "+responseUser.user.token)
 	handler.ServeHTTP(deleteRecorder, deleteReq)
 	validateResponseCode(t, http.StatusOK, deleteRecorder.Result().StatusCode)
-	log.Printf("Delete Response: %s\n", deleteRecorder.Body.String())
 
 	// ensure we can't get user or not is_active
 	userRecorder := httptest.NewRecorder()
@@ -221,7 +245,9 @@ func TestCreateUpdateAndDeleteUser(t *testing.T) {
 	handler.ServeHTTP(userRecorder, userReq)
 
 	validateResponseCode(t, http.StatusNotFound, userRecorder.Result().StatusCode)
-	log.Printf("Get Response: %s\n", userRecorder.Body.String())
+
+	notActiveResponse := getResponse(t, userRecorder.Body.Bytes())["response"].(map[string]interface{})
+	validateResponseMessage(t, messaging.USER_NOT_ACTIVE, notActiveResponse["message"].(string))
 
 	tearDown(t)
 }
@@ -238,6 +264,11 @@ func validateResponseCode(t *testing.T, expectedStatusCode int, responseCode int
 	}
 }
 
+func validateResponseMessage(t *testing.T, expectedMessage string, responseMessage string) {
+	if expectedMessage != responseMessage {
+		t.Errorf("Expected Response message (%s), received (%s)", expectedMessage, responseMessage)
+	}
+}
 func validateCode(t *testing.T, code string) {
 	if code != "ok" {
 		t.Errorf("Response code should be ok. Received %s")
@@ -268,12 +299,19 @@ func validateUserPassword(t *testing.T, pw interface{}) {
 	}
 }
 
-func validateGetUser(t *testing.T, responseBody []byte, user url.Values) response {
-	var response response
+func getResponse(t *testing.T, responseBody []byte) map[string]interface{} {
 	var responseMap map[string]interface{}
 	jsonErr := json.Unmarshal(responseBody, &responseMap)
 
 	errorIfExists(t, jsonErr)
+
+	return responseMap
+}
+
+func validateGetUser(t *testing.T, responseBody []byte, user url.Values) response {
+	var response response
+	responseMap := getResponse(t, responseBody)
+
 	response.code = responseMap["code"].(string)
 	responseUserBody := responseMap["response"].(map[string]interface{})
 	response.user.id = int64(responseUserBody["id"].(float64))
