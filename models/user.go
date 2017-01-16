@@ -1,7 +1,6 @@
 package models
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"reflect"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/pick-up-api/utils/auth"
 	"github.com/pick-up-api/utils/resources"
+	"github.com/pick-up-api/utils/types"
 	"github.com/pick-up-api/utils/validation"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -16,15 +16,15 @@ import (
 const BCryptHashCost = 10
 
 type User struct {
-	Id         int64         `json:"id" db:"id"`
-	Email      string        `json:"email" db:"email"`
-	password   string        `json:"-" db:"password"` // omit
-	Name       string        `json:"name" db:"name"`
-	FacebookId sql.NullInt64 `json:"facebook_id,omitempty" db:"facebook_id"`
-	Active     int           `json:"active" db:"is_active"`
-	Token      string        `json:"token,omitempty" db:"-"`
-	CreatedAt  string        `json:"created_at,omitempty" db:"-"`
-	UpdatedAt  string        `json:"updated_at,omitempty" db:"-"`
+	Id         int64           `json:"id" db:"id"`
+	Email      string          `json:"email" db:"email"`
+	password   string          `json:"-" db:"password"` // omit
+	Name       string          `json:"name" db:"name"`
+	FacebookId types.NullInt64 `json:"facebook_id,omitempty" db:"facebook_id"`
+	Active     int             `json:"active" db:"is_active"`
+	Token      string          `json:"token,omitempty" db:"-"`
+	CreatedAt  string          `json:"created_at,omitempty" db:"-"`
+	UpdatedAt  string          `json:"updated_at,omitempty" db:"-"`
 }
 
 func (u *User) Save() (int64, error) {
