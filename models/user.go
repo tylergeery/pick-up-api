@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 
@@ -33,29 +32,33 @@ func (u *User) Save() (int64, error) {
 
 	columns, values := u.GetUserColumnStringAndValues(false, true)
 	values = append(values, u.GetPassword())
-	db := resources.DB()
+	tx := resources.TX()
+	defer tx.Rollback()
 	query := fmt.Sprintf(
 		`   INSERT INTO users (%s, password, created_at)
             VALUES (%s, NOW()) RETURNING id
         `, columns, resources.SqlStub(len(values)))
 
-	err := db.QueryRow(query, values...).Scan(&id)
+	err := tx.QueryRow(query, values...).Scan(&id)
 
-	u.Id = id
+	if err == nil {
+		u.Id = id
+		tx.Commit()
+	}
 
 	return id, err
 }
 
 func (u *User) Update() error {
 	columns, values := u.GetUserColumnStringAndValues(false, false)
-	db := resources.DB()
+	tx := resources.TX()
 	query := fmt.Sprintf(
 		`   UPDATE users
             SET (%s, updated_at) = (%s, NOW())
             WHERE id = %d
         `, columns, resources.SqlStub(len(values)), u.Id)
 
-	_, err := db.Exec(query, values...)
+	_, err := tx.Exec(query, values...)
 
 	return err
 }
@@ -149,86 +152,4 @@ func (u *User) AddToken() {
 	if err == nil {
 		u.Token = tokenString
 	}
-}
-
-func UserGetById(id int64) (User, error) {
-	var user User
-	db := resources.DB()
-
-	rows, err := db.Query("SELECT id, email, name, facebook_id, is_active, created_at, updated_at FROM users WHERE id = $1", id)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id int64
-		var facebook_id sql.NullInt64
-		var email, name, created_at, updated_at string
-		var is_active int
-
-		if err := rows.Scan(&id, &email, &name, &facebook_id, &is_active, &created_at, &updated_at); err != nil {
-			log.Fatal(err)
-		}
-
-		user = User{}
-		user.Id = id
-		user.Email = email
-		user.password = "secret"
-		user.Name = name
-		user.FacebookId = facebook_id
-		user.Active = is_active
-		user.CreatedAt = created_at
-		user.UpdatedAt = updated_at
-	}
-
-	if err := rows.Err(); err != nil {
-		log.Fatal(err)
-	}
-
-	if user.Id == 0 && err == nil {
-		err = errors.New("User could not be found")
-	}
-
-	if user.Active != 1 {
-		err = errors.New("User does not have an active account")
-	}
-
-	return user, err
-}
-
-func UserCreateProfile(userPostData map[string][]string) (User, error) {
-	var user User
-
-	err := user.Build(userPostData)
-	user.Active = 1
-
-	if err == nil {
-		_, err = user.Save()
-	}
-
-	return user, err
-}
-
-func UserUpdateProfile(userId int64, userPostData map[string][]string) (User, error) {
-	user, err := UserGetById(userId)
-
-	if err == nil {
-		err = user.Build(userPostData)
-	}
-	if err == nil {
-		err = user.Update()
-	}
-
-	return user, err
-}
-
-func UserDeleteProfile(userId int64) error {
-	db := resources.DB()
-	_, err := db.Query(
-		`   UPDATE users
-            SET is_active = 0, updated_at = NOW()
-            WHERE id = $1
-        `, userId)
-
-	return err
 }

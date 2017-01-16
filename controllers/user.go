@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/pick-up-api/models"
+	"github.com/pick-up-api/services"
 	"github.com/pick-up-api/utils/auth"
 	"github.com/pick-up-api/utils/response"
 )
@@ -18,7 +19,7 @@ func UserProfile(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userId, _ := strconv.ParseInt(vars["userId"], 10, 64)
 
-	user, err := models.UserGetById(userId)
+	user, err := services.UserGetById(userId)
 
 	if err == nil {
 		response.Success(w, user)
@@ -40,7 +41,7 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 	_, pwExists := r.Form["password"]
 
 	if emailExists && pwExists {
-		user, err = models.UserCreateProfile(r.Form)
+		user, err = services.UserCreateProfile(r.Form)
 		user.AddToken()
 	} else {
 		if !emailExists {
@@ -76,7 +77,7 @@ func UserUpdate(w http.ResponseWriter, r *http.Request) {
 		userId, _ := strconv.ParseInt(userIdArray[0], 10, 64)
 
 		if userId == requestId {
-			user, err = models.UserUpdateProfile(userId, r.Form)
+			user, err = services.UserUpdateProfile(userId, r.Form)
 		} else {
 			errorResponseCode = http.StatusForbidden
 			err = errors.New("You are not authorized to update this user")
@@ -111,7 +112,7 @@ func UserDelete(w http.ResponseWriter, r *http.Request) {
 		userId, _ := strconv.ParseInt(userIdArray[0], 10, 64)
 
 		if requestId == userId {
-			err = models.UserDeleteProfile(userId)
+			err = services.UserDeleteProfile(userId)
 		} else {
 			err = errors.New("You are not authorized to remove this user")
 		}

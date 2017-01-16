@@ -1,18 +1,20 @@
 package controllerTests
 
 import (
+	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strconv"
-	"strings"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"github.com/pick-up-api/router"
+	"github.com/pick-up-api/utils/resources"
 )
 
 type user struct {
@@ -31,29 +33,56 @@ type response struct {
 }
 
 var (
-	server   *httptest.Server
-	reader   io.Reader //Ignore this for now
-	usersUrl string
+	db           *sql.DB
+	handler      *mux.Router
+	userEndpoint string
 )
 
 func init() {
-	server = httptest.NewServer(router.GetRouter())
-	usersUrl = fmt.Sprintf("%s/user", server.URL)
+	db = resources.DB()
+	handler = router.GetRouter()
+	userEndpoint = "https://api.pickup.com/user"
+}
+
+func setUp(t *testing.T) {
+	resources.SetTestTXInterface()
+	log.Println("Start")
+}
+
+func tearDown(t *testing.T) {
+	_ = resources.TX().TearDown()
+	log.Println("Finish")
 }
 
 func TestUserProfile(t *testing.T) {
-	validUserResponse, _ := http.Get(usersUrl + "/1")
-	outOfBoundsResponse, _ := http.Get(usersUrl + "/11234123")
-	defer validUserResponse.Body.Close()
-	defer outOfBoundsResponse.Body.Close()
+	setUp(t)
 
-	validateResponseCode(t, http.StatusOK, validUserResponse.StatusCode)
-	validateResponseCode(t, http.StatusNotFound, outOfBoundsResponse.StatusCode)
+	// Given
+	validUserRecorder := httptest.NewRecorder()
+	validReq, validErr := http.NewRequest("GET", userEndpoint+"/1", nil)
+	outOfBoundsRecorder := httptest.NewRecorder()
+	outOfBoundsReq, outOfBoundsErr := http.NewRequest("GET", userEndpoint+"/11234123", nil)
 
-	_ = validateGetUser(t, validUserResponse.Body, url.Values{})
+	// Perform
+	errorIfExists(t, validErr)
+	errorIfExists(t, outOfBoundsErr)
+
+	handler.ServeHTTP(validUserRecorder, validReq)
+	handler.ServeHTTP(outOfBoundsRecorder, outOfBoundsReq)
+
+	// Assert
+	validateResponseCode(t, http.StatusOK, validUserRecorder.Result().StatusCode)
+	validateResponseCode(t, http.StatusNotFound, outOfBoundsRecorder.Result().StatusCode)
+
+	_ = validateGetUser(t, validUserRecorder.Body.Bytes(), url.Values{})
+
+	tearDown(t)
 }
 
 func TestCreateUser(t *testing.T) {
+	setUp(t)
+
+	// Given
 	emptyUser := url.Values{}
 
 	userWithoutEmail := url.Values{}
@@ -70,89 +99,131 @@ func TestCreateUser(t *testing.T) {
 	userWithoutPassword.Add("name", "Tester")
 
 	user := url.Values{}
-	user.Add("email", "test@yahoo.com")
+	user.Add("email", "test+unique55@yahoo.com")
 	user.Add("password", "secret555")
 	user.Add("name", "Tester")
 
 	fails := []url.Values{emptyUser, userWithoutEmail, userWithInvalidEmail, userWithoutPassword}
 	successes := []url.Values{user}
 
+	// Perform && Assert
 	// test invalid params
 	for _, invalidUser := range fails {
-		response, err := http.PostForm(usersUrl+"/create", invalidUser)
-		defer response.Body.Close()
+		invalidCreateRecorder := httptest.NewRecorder()
+		invalidReq, invalidErr := http.NewRequest(
+			"POST",
+			userEndpoint+"/create",
+			bytes.NewBufferString(invalidUser.Encode()))
 
-		errorIfExists(t, err)
-		validateResponseCode(t, http.StatusBadRequest, response.StatusCode)
+		errorIfExists(t, invalidErr)
+		invalidReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		handler.ServeHTTP(invalidCreateRecorder, invalidReq)
+		validateResponseCode(t, http.StatusBadRequest, invalidCreateRecorder.Result().StatusCode)
 	}
 
 	// test valid user json
 	for _, validUser := range successes {
-		response, err := http.PostForm(usersUrl+"/create", validUser)
-		defer response.Body.Close()
+		validCreateRecorder := httptest.NewRecorder()
+		validReq, validErr := http.NewRequest(
+			"POST",
+			userEndpoint+"/create",
+			bytes.NewBufferString(validUser.Encode()))
 
-		errorIfExists(t, err)
-		validateResponseCode(t, http.StatusOK, response.StatusCode)
+		errorIfExists(t, validErr)
+		validReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		handler.ServeHTTP(validCreateRecorder, validReq)
+		validateResponseCode(t, http.StatusOK, validCreateRecorder.Result().StatusCode)
 
-		_ = validateGetUser(t, response.Body, user)
+		_ = validateGetUser(t, validCreateRecorder.Body.Bytes(), validUser)
 	}
+
+	tearDown(t)
 }
 
 func TestCreateUpdateAndDeleteUser(t *testing.T) {
+	setUp(t)
+
 	user := url.Values{}
-	user.Add("email", "test@yahoo.com")
+	user.Add("email", "test+unique22@yahoo.com")
 	user.Add("password", "secret555")
 	user.Add("name", "Tester")
 	user.Add("facebook_id", "123456")
 
-	response, err := http.PostForm(usersUrl+"/create", user)
-	defer response.Body.Close()
+	createRecorder := httptest.NewRecorder()
+	createReq, createErr := http.NewRequest(
+		"POST",
+		userEndpoint+"/create",
+		bytes.NewBufferString(user.Encode()))
 
-	errorIfExists(t, err)
-	validateResponseCode(t, http.StatusOK, response.StatusCode)
+	errorIfExists(t, createErr)
+	createReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	handler.ServeHTTP(createRecorder, createReq)
+	validateResponseCode(t, http.StatusOK, createRecorder.Result().StatusCode)
 
-	responseUser := validateGetUser(t, response.Body, user)
+	responseUser := validateGetUser(t, createRecorder.Body.Bytes(), user)
 
 	// update name
 	user.Set("name", "No Longer Tester")
 	user.Add("userId", fmt.Sprintf("%d", responseUser.user.id))
-	updateInvalidResponse, updateInvalidErr := http.PostForm(usersUrl+"/update", user)
-	defer updateInvalidResponse.Body.Close()
+	invalidUpdateRecorder := httptest.NewRecorder()
+	invalidUpdateReq, invalidUpdateErr := http.NewRequest(
+		"POST",
+		userEndpoint+"/update",
+		bytes.NewBufferString(user.Encode()))
 
 	// handle error of invalid token
-	errorIfExists(t, updateInvalidErr)
-	validateResponseCode(t, http.StatusForbidden, updateInvalidResponse.StatusCode)
+	errorIfExists(t, invalidUpdateErr)
+	invalidUpdateReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	handler.ServeHTTP(invalidUpdateRecorder, invalidUpdateReq)
+	validateResponseCode(t, http.StatusForbidden, invalidUpdateRecorder.Result().StatusCode)
 
 	// handle successful response
-	client := &http.Client{}
-	updateRequest, _ := http.NewRequest("POST", usersUrl+"/update", strings.NewReader(user.Encode()))
-	updateRequest.Header.Set("Authorization", "Bearer "+responseUser.user.token)
-	updateRequest.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	updateResponse, updateErr := client.Do(updateRequest)
-	defer updateResponse.Body.Close()
+	updateRecorder := httptest.NewRecorder()
+	updateReq, updateErr := http.NewRequest(
+		"POST",
+		userEndpoint+"/update",
+		bytes.NewBufferString(user.Encode()))
 
+	// handle error of invalid token
 	errorIfExists(t, updateErr)
-	validateResponseCode(t, http.StatusOK, updateResponse.StatusCode)
-	_ = validateGetUser(t, updateResponse.Body, user)
+	updateReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	updateReq.Header.Set("Authorization", "Bearer "+responseUser.user.token)
+	handler.ServeHTTP(updateRecorder, updateReq)
+	validateResponseCode(t, http.StatusOK, updateRecorder.Result().StatusCode)
+
+	_ = validateGetUser(t, updateRecorder.Body.Bytes(), user)
 
 	// delete user
 	// handle successful response
-	client = &http.Client{}
 	user = url.Values{}
 	user.Add("userId", fmt.Sprintf("%d", responseUser.user.id))
-	deleteRequest, _ := http.NewRequest("POST", usersUrl+"/delete", strings.NewReader(user.Encode()))
-	deleteRequest.Header.Set("Authorization", "Bearer "+responseUser.user.token)
-	deleteRequest.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	deleteResponse, deleteErr := client.Do(deleteRequest)
-	defer deleteResponse.Body.Close()
+	deleteRecorder := httptest.NewRecorder()
+	deleteReq, deleteErr := http.NewRequest(
+		"POST",
+		userEndpoint+"/delete",
+		bytes.NewBufferString(user.Encode()))
 
 	errorIfExists(t, deleteErr)
-	validateResponseCode(t, http.StatusOK, deleteResponse.StatusCode)
+	deleteReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	deleteReq.Header.Set("Authorization", "Bearer "+responseUser.user.token)
+	handler.ServeHTTP(deleteRecorder, deleteReq)
+	validateResponseCode(t, http.StatusOK, deleteRecorder.Result().StatusCode)
+	log.Printf("Delete Response: %s\n", deleteRecorder.Body.String())
 
 	// ensure we can't get user or not is_active
-	inactiveUserResponse, _ := http.Get(usersUrl + user.Get("userId"))
-	defer inactiveUserResponse.Body.Close()
-	validateResponseCode(t, http.StatusNotFound, inactiveUserResponse.StatusCode)
+	userRecorder := httptest.NewRecorder()
+	userReq, userErr := http.NewRequest(
+		"GET",
+		fmt.Sprintf("%s/%d", userEndpoint, responseUser.user.id),
+		nil)
+
+	errorIfExists(t, userErr)
+	handler.ServeHTTP(userRecorder, userReq)
+
+	validateResponseCode(t, http.StatusNotFound, userRecorder.Result().StatusCode)
+	log.Printf("Get Response: %s\n", userRecorder.Body.String())
+
+	tearDown(t)
 }
 
 func errorIfExists(t *testing.T, err error) {
@@ -197,10 +268,9 @@ func validateUserPassword(t *testing.T, pw interface{}) {
 	}
 }
 
-func validateGetUser(t *testing.T, body io.ReadCloser, user url.Values) response {
+func validateGetUser(t *testing.T, responseBody []byte, user url.Values) response {
 	var response response
 	var responseMap map[string]interface{}
-	responseBody, _ := ioutil.ReadAll(body)
 	jsonErr := json.Unmarshal(responseBody, &responseMap)
 
 	errorIfExists(t, jsonErr)
