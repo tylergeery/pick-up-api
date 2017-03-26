@@ -78,7 +78,14 @@ func UserUpdate(w http.ResponseWriter, r *http.Request) {
 		userId, _ := strconv.ParseInt(userIdArray[0], 10, 64)
 
 		if userId == requestId {
-			user, err = services.UserUpdateProfile(userId, r.Form)
+			user, err = UserGetById(userId)
+
+			if err == nil {
+				err = user.Build(userPostData)
+			}
+			if err == nil {
+				err = user.Update()
+			}
 		} else {
 			errorResponseCode = http.StatusForbidden
 			err = errors.New(messaging.USER_UNAUTHORIZED_UPDATE)

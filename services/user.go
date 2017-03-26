@@ -121,17 +121,67 @@ func UserCreateProfile(userPostData map[string][]string) (models.User, error) {
 	return user, err
 }
 
-func UserUpdateProfile(userId int64, userPostData map[string][]string) (models.User, error) {
-	user, err := UserGetById(userId)
+func UserInsert(columns string, values []interface{}) (int64, error) {
+    var id int64
+
+    tx := resources.TX()
+	defer tx.Rollback()
+	query := fmt.Sprintf(
+		`   INSERT INTO users (%s, created_at)
+            VALUES (%s, NOW()) RETURNING id
+        `, columns, resources.SqlStub(len(values)))
+
+	err := tx.QueryRow(query, values...).Scan(&id)
 
 	if err == nil {
-		err = user.Build(userPostData)
-	}
-	if err == nil {
-		err = user.Update()
+		tx.Commit()
 	}
 
-	return user, err
+	return id, err
+}
+
+func UserUpdateValues(columns string, values []interface{}, updated_at bool) error {
+    updated_at_col = ""
+    updated_at_val = ""
+    if updated_at {
+        updated_at_col = ", updated_at"
+        updated_at_val = ", NOW()"
+    }
+
+    tx := resources.TX()
+    defer tx.Rollback()
+	query := fmt.Sprintf(
+		`   UPDATE users
+            SET (%s%s) = (%s%s)
+            WHERE id = %d
+        `, columns, updated_at_col,
+        resources.SqlStub(len(values)), updated_at_val,
+        u.Id)
+
+	_, err := tx.Exec(query, values...)
+
+    if err == nil {
+        tx.Commit()
+    }
+
+	return err
+}
+
+func UserUpdateTokens(userId int64, accessToken string, refreshToken string) error {
+    cols := ""
+    vals := []{}
+
+    if accessToken != "" {
+        cols += "access_token,"
+    }
+
+    if refreshToken != "" {
+        cols += "refresh_token,"
+    }
+
+    cols = strings.TrimRight(cols, ", ")
+
+    return UserUpdateValues(userId, cols, vals, false)
 }
 
 func UserDeleteProfile(userId int64) error {

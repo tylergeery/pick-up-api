@@ -1,50 +1,83 @@
 package auth
 
-import (
-    "time"
-    "github.com/dgrijalva/jwt-go"
-)
+import "time"
 
-func CreateUserToken(userId int64, permissions int) (string, error) {
-    claims := jwt.MapClaims{
-        "userId": userId,
-        "permissions": permissions,
-        "ts": time.Now().Unix(),
-        "type": "user"}
+const ACCESS_TOKEN_LIFETIME = 1200
 
-    return CreateToken(claims)
+func CreateUserToken(userId int64, permissions int, tokenType string) (string, error) {
+	claims := jwt.MapClaims{
+		"userId":      userId,
+		"permissions": permissions,
+		"ts":          time.Now().Unix(),
+		"type":        "user",
+		"tokenType":   tokenType}
+
+	return CreateToken(claims)
 }
 
 func ValidateUserToken(stringToken string, userId int64) bool {
-    var valid bool = true
+	var valid bool = true
 
-    claims, success := ExtractToken(stringToken)
+	claims, success := ExtractToken(stringToken)
 
-    if !success || claims["userId"] == nil {
-        valid = false
-    } else {
-        userIdFromClaims := int64(claims["userId"].(float64))
+	if !success || claims["userId"] == nil {
+		valid = false
+	} else {
+		userIdFromClaims := int64(claims["userId"].(float64))
 
-        if (claims["type"] != "user") {
-            valid = false
-        }
+		if claims["type"] != "user" {
+			valid = false
+		}
 
-        if (userIdFromClaims != userId) {
-            valid = false
-        }
-    }
+		if userIdFromClaims != userId {
+			valid = false
+		}
+	}
 
-    return valid
+	return valid
 }
 
-func GetUserIdFromToken(stringToken string) (int64, bool) {
-    claims, success := ExtractToken(stringToken)
+/**
+ * Validate an access token and return userId on success
+ */
+func GetUserIdFromAccessToken(stringToken string) (int64, bool) {
+	claims, success := ExtractToken(stringToken)
 
-    if !success || claims["userId"] == nil {
-        return 0, false
-    } else {
-        userIdFromClaims := int64(claims["userId"].(float64))
+	if !success {
+		return 0, false
+	}
 
-        return userIdFromClaims, true
-    }
+	tokenTime := claims["ts"].(int64)
+	if (tokenTime + ACCESS_TOKEN_LIFETIME) < time.Now().Unix() {
+		// access token is expired
+		return 0, false
+	}
+
+	return getUserIdFromClaims(claims, "access")
+}
+
+/**
+ * Validate a refresh token and return userId on success
+ */
+func GetUserIdFromRefreshToken(stringToken string) (int64, bool) {
+	claims, success := ExtractToken(stringToken)
+
+	if !success {
+		return 0, false
+	}
+
+	return getUserIdFromClaims(claims, "refresh")
+}
+
+/**
+ * Get the user id from claims for a given token
+ */
+func getUserIdFromClaims(claims jwt.MapClaims, tokenType string) (int64, bool) {
+	if claims["userId"] == nil || claims["tokenType"].(string) != tokenType {
+		return 0, false
+	} else {
+		userIdFromClaims := int64(claims["userId"].(float64))
+
+		return userIdFromClaims, true
+	}
 }

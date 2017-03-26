@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/pick-up-api/services"
 	"github.com/pick-up-api/utils/auth"
 	"github.com/pick-up-api/utils/messaging"
-	"github.com/pick-up-api/utils/resources"
 	"github.com/pick-up-api/utils/types"
 	"github.com/pick-up-api/utils/validation"
 	"golang.org/x/crypto/bcrypt"
@@ -17,61 +17,58 @@ import (
 const BCryptHashCost = 10
 
 type User struct {
-	Id         int64           `json:"id" db:"id"`
-	Email      string          `json:"email" db:"email"`
-	password   string          `json:"-" db:"password"` // omit
-	Name       string          `json:"name" db:"name"`
-	FacebookId types.NullInt64 `json:"facebook_id,omitempty" db:"facebook_id"`
-	Active     int             `json:"active" db:"is_active"`
-	Token      string          `json:"token,omitempty" db:"-"`
-	CreatedAt  string          `json:"created_at,omitempty" db:"-"`
-	UpdatedAt  string          `json:"updated_at,omitempty" db:"-"`
+	Id           int64           `json:"id" db:"id"`
+	Email        string          `json:"email" db:"email"`
+	password     string          `json:"-" db:"password"` // omit
+	Name         string          `json:"name" db:"name"`
+	FacebookId   types.NullInt64 `json:"facebook_id,omitempty" db:"facebook_id"`
+	Active       int             `json:"active" db:"is_active"`
+	RefreshToken string          `json:"refresh_token,omitempty" db:"refresh_token"`
+	AccessToken  string          `json:"refresh_token,omitempty" db:"access_token"`
+	CreatedAt    string          `json:"created_at,omitempty" db:"-"`
+	UpdatedAt    string          `json:"updated_at,omitempty" db:"-"`
 }
 
+/**
+ * Save the new user in the DB
+ */
 func (u *User) Save() (int64, error) {
-	var id int64
-
 	columns, values := u.GetUserColumnStringAndValues(false, true)
+	columns += ", password"
 	values = append(values, u.GetPassword())
-	tx := resources.TX()
-	defer tx.Rollback()
-	query := fmt.Sprintf(
-		`   INSERT INTO users (%s, password, created_at)
-            VALUES (%s, NOW()) RETURNING id
-        `, columns, resources.SqlStub(len(values)))
 
-	err := tx.QueryRow(query, values...).Scan(&id)
-
-	if err == nil {
-		u.Id = id
-		tx.Commit()
-	}
+	id, err := services.UserInsert(columns, values)
+	u.Id = id
 
 	return id, err
 }
 
+/**
+ * Update the user in the db
+ */
 func (u *User) Update() error {
 	columns, values := u.GetUserColumnStringAndValues(false, false)
-	tx := resources.TX()
-	query := fmt.Sprintf(
-		`   UPDATE users
-            SET (%s, updated_at) = (%s, NOW())
-            WHERE id = %d
-        `, columns, resources.SqlStub(len(values)), u.Id)
 
-	_, err := tx.Exec(query, values...)
-
-	return err
+	return services.UserUpdateValues(u.Id, columns, values, true)
 }
 
+/**
+ * Set the password for the current User
+ */
 func (u *User) SetPassword(pw string) {
 	u.password = pw
 }
 
+/**
+ * Get the user's password
+ */
 func (u *User) GetPassword() string {
 	return u.password
 }
 
+/**
+ * Get the saveable property and value stubs for a db insert/update
+ */
 func (u *User) GetUserColumnStringAndValues(includeID, includePW bool) (string, []interface{}) {
 	var columns string
 	var values []interface{}
@@ -100,6 +97,9 @@ func (u *User) GetUserColumnStringAndValues(includeID, includePW bool) (string, 
 	return columns, values
 }
 
+/**
+ * Build a new user from a user map
+ */
 func (u *User) Build(userPostData map[string][]string) error {
 	var err error
 
@@ -135,7 +135,8 @@ func (u *User) Build(userPostData map[string][]string) error {
 				u.Email = email
 			}
 		default:
-			// TODO, probably ignore
+			// only add properties that are user supplied,
+			// all else can be ignored here
 		}
 
 		// return err as soon as one arises
@@ -147,10 +148,24 @@ func (u *User) Build(userPostData map[string][]string) error {
 	return err
 }
 
-func (u *User) AddToken() {
-	tokenString, err := auth.CreateUserToken(u.Id, 1)
+/**
+ * Add a refresh token to a newly created User
+ */
+func (u *User) AddRefreshToken() {
+	tokenString, err := auth.CreateUserToken(u.Id, 1, "refresh")
 
 	if err == nil {
-		u.Token = tokenString
+		u.RefreshToken = tokenString
+	}
+}
+
+/**
+ * Adds a shorter lived access token for a User
+ */
+func (u *User) AddAccessToken() {
+	tokenString, err := auth.CreateUserToken(u.Id, 1, "access")
+
+	if err == nil {
+		u.AccessToken = tokenString
 	}
 }

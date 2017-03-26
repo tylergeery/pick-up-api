@@ -20,13 +20,13 @@ import (
 )
 
 type user struct {
-	id         int64
-	email      string
-	name       string
-	token      string
-	is_active  int
-	created_at string
-	updated_at string
+	id            int64
+	email         string
+	name          string
+	refresh_token string
+	is_active     int
+	created_at    string
+	updated_at    string
 }
 
 type response struct {
@@ -212,7 +212,7 @@ func TestCreateUpdateAndDeleteUser(t *testing.T) {
 	// handle successful update
 	errorIfExists(t, updateErr)
 	updateReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	updateReq.Header.Set("Authorization", "Bearer "+responseUser.user.token)
+	updateReq.Header.Set("Authorization", "Bearer "+responseUser.user.refresh_token)
 	handler.ServeHTTP(updateRecorder, updateReq)
 	validateResponseCode(t, http.StatusOK, updateRecorder.Result().StatusCode)
 
@@ -230,7 +230,7 @@ func TestCreateUpdateAndDeleteUser(t *testing.T) {
 
 	errorIfExists(t, deleteErr)
 	deleteReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	deleteReq.Header.Set("Authorization", "Bearer "+responseUser.user.token)
+	deleteReq.Header.Set("Authorization", "Bearer "+responseUser.user.refresh_token)
 	handler.ServeHTTP(deleteRecorder, deleteReq)
 	validateResponseCode(t, http.StatusOK, deleteRecorder.Result().StatusCode)
 
@@ -330,8 +330,8 @@ func validateGetUser(t *testing.T, responseBody []byte, user url.Values) respons
 		response.user.updated_at = responseUserBody["updated_at"].(string)
 	}
 
-	if responseUserBody["token"] != nil {
-		response.user.token = responseUserBody["token"].(string)
+	if responseUserBody["refresh_token"] != nil {
+		response.user.refresh_token = responseUserBody["refresh_token"].(string)
 	}
 
 	validateCode(t, response.code)
