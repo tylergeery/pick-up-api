@@ -106,7 +106,6 @@ func UserCreateProfile(userPostData map[string][]string) (User, error) {
 
 	err := user.Build(userPostData)
 	user.Active = 1
-	user.AddRefreshToken()
 
 	if err == nil {
 		userWithEmail, _ = UserGetByEmail(user.Email)
@@ -140,6 +139,28 @@ func UserInsert(columns string, values []interface{}) (int64, error) {
 	}
 
 	return id, err
+}
+
+func UserInsertRefreshToken(userId int64, tokenString string) error {
+    values := []interface{}{
+        userId, tokenString
+    }
+
+    tx := resources.TX()
+	defer tx.Rollback()
+	query := fmt.Sprintf(
+		`   INSERT INTO user-_tokens
+            (user_id, refresh_token, created_at)
+            VALUES (%s, NOW())
+        `, resources.SqlStub(len(values)))
+
+	_, err := tx.Exec(query, values...)
+
+	if err == nil {
+		tx.Commit()
+	}
+
+	return err
 }
 
 func UserUpdateValues(userId int64, columns string, values []interface{}, updated_at bool) error {

@@ -40,6 +40,8 @@ func (u *User) Save() (int64, error) {
 	id, err := UserInsert(columns, values)
 	u.Id = id
 
+	u.AddRefreshToken()
+
 	return id, err
 }
 
@@ -155,8 +157,13 @@ func (u *User) AddRefreshToken() {
 	tokenString, err := auth.CreateUserToken(u.Id, 1, "refresh")
 
 	if err == nil {
-		log.Println("Adding refresh token")
 		u.RefreshToken = tokenString
+
+		err = UserInsertRefreshToken(u.Id, tokenString)
+	}
+
+	if err != nil {
+		log.Println(err)
 	}
 }
 
