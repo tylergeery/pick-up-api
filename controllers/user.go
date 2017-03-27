@@ -6,8 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
-	"github.com/pick-up-api/models"
-	"github.com/pick-up-api/services"
+	userModel "github.com/pick-up-api/models/user"
 	"github.com/pick-up-api/utils/auth"
 	"github.com/pick-up-api/utils/messaging"
 	"github.com/pick-up-api/utils/response"
@@ -20,7 +19,7 @@ func UserProfile(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userId, _ := strconv.ParseInt(vars["userId"], 10, 64)
 
-	user, err := services.UserGetById(userId)
+	user, err := userModel.UserGetById(userId)
 
 	if err == nil {
 		response.Success(w, user)
@@ -34,7 +33,7 @@ func UserProfile(w http.ResponseWriter, r *http.Request) {
  */
 func UserCreate(w http.ResponseWriter, r *http.Request) {
 	var err error
-	var user models.User
+	var user userModel.User
 
 	r.ParseForm()
 
@@ -42,8 +41,8 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 	_, pwExists := r.Form["password"]
 
 	if emailExists && pwExists {
-		user, err = services.UserCreateProfile(r.Form)
-		user.AddToken()
+		user, err = userModel.UserCreateProfile(r.Form)
+		user.AddRefreshToken()
 	} else {
 		if !emailExists {
 			err = errors.New(messaging.USER_REQUIRES_EMAIL)
@@ -64,7 +63,7 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
  */
 func UserUpdate(w http.ResponseWriter, r *http.Request) {
 	var err error
-	var user models.User
+	var user userModel.User
 	var requestId int64
 	errorResponseCode := http.StatusBadRequest
 
@@ -78,10 +77,10 @@ func UserUpdate(w http.ResponseWriter, r *http.Request) {
 		userId, _ := strconv.ParseInt(userIdArray[0], 10, 64)
 
 		if userId == requestId {
-			user, err = UserGetById(userId)
+			user, err = userModel.UserGetById(userId)
 
 			if err == nil {
-				err = user.Build(userPostData)
+				err = user.Build(r.Form)
 			}
 			if err == nil {
 				err = user.Update()
@@ -120,7 +119,7 @@ func UserDelete(w http.ResponseWriter, r *http.Request) {
 		userId, _ := strconv.ParseInt(userIdArray[0], 10, 64)
 
 		if requestId == userId {
-			err = services.UserDeleteProfile(userId)
+			err = userModel.UserDeleteProfile(userId)
 		} else {
 			err = errors.New(messaging.USER_UNAUTHORIZED_UPDATE)
 		}

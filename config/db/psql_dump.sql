@@ -4,6 +4,8 @@ CREATE TABLE users (
     password VARCHAR(60),
     name VARCHAR(50),
     facebook_id INT,
+    refresh_token VARCHAR(120),
+    access_token VARCHAR(120)
     is_active INT DEFAULT 1,
     created_at TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'PST'),
     updated_at TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'PST')

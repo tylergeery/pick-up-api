@@ -1,6 +1,10 @@
 package auth
 
-import "time"
+import (
+	"time"
+
+	jwt "github.com/dgrijalva/jwt-go"
+)
 
 const ACCESS_TOKEN_LIFETIME = 1200
 
