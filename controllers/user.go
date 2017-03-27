@@ -42,7 +42,6 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 
 	if emailExists && pwExists {
 		user, err = userModel.UserCreateProfile(r.Form)
-		user.AddRefreshToken()
 	} else {
 		if !emailExists {
 			err = errors.New(messaging.USER_REQUIRES_EMAIL)

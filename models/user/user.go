@@ -24,7 +24,7 @@ type User struct {
 	FacebookId   types.NullInt64 `json:"facebook_id,omitempty" db:"facebook_id"`
 	Active       int             `json:"active" db:"is_active"`
 	RefreshToken string          `json:"refresh_token,omitempty" db:"refresh_token"`
-	AccessToken  string          `json:"refresh_token,omitempty" db:"access_token"`
+	AccessToken  string          `json:"access_token,omitempty" db:"access_token"`
 	CreatedAt    string          `json:"created_at,omitempty" db:"-"`
 	UpdatedAt    string          `json:"updated_at,omitempty" db:"-"`
 }
@@ -103,7 +103,6 @@ func (u *User) GetUserColumnStringAndValues(includeID, includePW bool) (string, 
 func (u *User) Build(userPostData map[string][]string) error {
 	var err error
 
-	log.Println(userPostData)
 	for k, v := range userPostData {
 		switch k {
 		case "name":
@@ -156,6 +155,7 @@ func (u *User) AddRefreshToken() {
 	tokenString, err := auth.CreateUserToken(u.Id, 1, "refresh")
 
 	if err == nil {
+		log.Println("Adding refresh token")
 		u.RefreshToken = tokenString
 	}
 }

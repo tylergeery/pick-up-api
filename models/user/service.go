@@ -106,6 +106,7 @@ func UserCreateProfile(userPostData map[string][]string) (User, error) {
 
 	err := user.Build(userPostData)
 	user.Active = 1
+	user.AddRefreshToken()
 
 	if err == nil {
 		userWithEmail, _ = UserGetByEmail(user.Email)
