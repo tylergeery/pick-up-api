@@ -51,12 +51,10 @@ func init() {
 
 func setUp(t *testing.T) {
 	resources.SetTestTXInterface()
-	log.Println("Start")
 }
 
 func tearDown(t *testing.T) {
 	_ = resources.TX().TearDown()
-	log.Println("Finish")
 }
 
 func TestUserProfile(t *testing.T) {

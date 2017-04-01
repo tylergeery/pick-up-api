@@ -1,9 +1,8 @@
-package formatTests
+package format
 
 import (
 	"testing"
 
-	"github.com/pick-up-api/utils/format"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,13 +19,13 @@ func init() {
 }
 
 func TestGetUnixTimeFromDBTimestamp(t *testing.T) {
-	unixTime := format.GetUnixTimeFromDBTimestamp(rfcTS)
+	unixTime := GetUnixTimeFromDBTimestamp(rfcTS)
 
 	assert.Equal(t, unixTS, unixTime)
 }
 
 func TestGetPrettyTimeFromDBTimestamp(t *testing.T) {
-	prettyTime := format.GetPrettyTimeFromDBTimestamp(rfcTS)
+	prettyTime := GetPrettyTimeFromDBTimestamp(rfcTS)
 
 	assert.Equal(t, prettyTS, prettyTime)
 }
