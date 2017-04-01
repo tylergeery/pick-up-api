@@ -19,6 +19,9 @@ func GetRouter() *mux.Router {
 	router.Handle("/user/delete", auth(controllers.UserDelete)).Methods("POST")
 	router.HandleFunc("/user/{userId}", controllers.UserProfile).Methods("GET")
 
+	// Auth API
+	router.HandleFunc("/auth/refresh", controllers.RefreshToken).Methods("POST")
+
 	// Events API
 
 	return router

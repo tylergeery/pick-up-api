@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/pick-up-api/utils/messaging"
 	"github.com/pick-up-api/utils/resources"
@@ -141,45 +140,14 @@ func UserInsert(columns string, values []interface{}) (int64, error) {
 	return id, err
 }
 
-func UserInsertRefreshToken(userId int64, tokenString string) error {
-    values := []interface{}{
-        userId, tokenString
-    }
-
-    tx := resources.TX()
-	defer tx.Rollback()
-	query := fmt.Sprintf(
-		`   INSERT INTO user-_tokens
-            (user_id, refresh_token, created_at)
-            VALUES (%s, NOW())
-        `, resources.SqlStub(len(values)))
-
-	_, err := tx.Exec(query, values...)
-
-	if err == nil {
-		tx.Commit()
-	}
-
-	return err
-}
-
-func UserUpdateValues(userId int64, columns string, values []interface{}, updated_at bool) error {
-	updated_at_col := ""
-	updated_at_val := ""
-	if updated_at {
-		updated_at_col = ", updated_at"
-		updated_at_val = ", NOW()"
-	}
-
+func UserUpdateValues(userId int64, columns string, values []interface{}) error {
 	tx := resources.TX()
 	defer tx.Rollback()
 	query := fmt.Sprintf(
 		`   UPDATE users
-            SET (%s%s) = (%s%s)
+            SET (%s, updated_at) = (%s, NOW())
             WHERE id = %d
-        `, columns, updated_at_col,
-		resources.SqlStub(len(values)), updated_at_val,
-		userId)
+        `, columns, resources.SqlStub(len(values)), userId)
 
 	_, err := tx.Exec(query, values...)
 
@@ -188,23 +156,6 @@ func UserUpdateValues(userId int64, columns string, values []interface{}, update
 	}
 
 	return err
-}
-
-func UserUpdateTokens(userId int64, accessToken string, refreshToken string) error {
-	cols := ""
-	vals := []interface{}{}
-
-	if accessToken != "" {
-		cols += "access_token,"
-	}
-
-	if refreshToken != "" {
-		cols += "refresh_token,"
-	}
-
-	cols = strings.TrimRight(cols, ", ")
-
-	return UserUpdateValues(userId, cols, vals, false)
 }
 
 func UserDeleteProfile(userId int64) error {

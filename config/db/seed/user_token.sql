@@ -1,5 +1,5 @@
 CREATE TABLE user_tokens (
-    user_id PRIMARY KEY,
+    user_id integer PRIMARY KEY,
     refresh_token VARCHAR(250),
     access_token VARCHAR(250),
     created_at TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'PST'),

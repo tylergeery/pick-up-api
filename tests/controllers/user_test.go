@@ -24,6 +24,7 @@ type user struct {
 	email         string
 	name          string
 	refresh_token string
+	access_token  string
 	is_active     int
 	created_at    string
 	updated_at    string
@@ -38,12 +39,14 @@ var (
 	db           *sql.DB
 	handler      *mux.Router
 	userEndpoint string
+	authEndpoint string
 )
 
 func init() {
 	db = resources.DB()
 	handler = router.GetRouter()
 	userEndpoint = "https://api.pickup.com/user"
+	authEndpoint = "https://api.pickup.com/auth"
 }
 
 func setUp(t *testing.T) {
@@ -184,6 +187,23 @@ func TestCreateUpdateAndDeleteUser(t *testing.T) {
 
 	responseUser := validateGetUser(t, createRecorder.Body.Bytes(), user)
 
+	// retrieve valid access token from auth endpoint
+	authRecorder := httptest.NewRecorder()
+	authReq, authErr := http.NewRequest(
+		"POST",
+		authEndpoint+"/refresh",
+		bytes.NewBufferString(""),
+	)
+
+	// get access token
+	errorIfExists(t, authErr)
+	authReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	authReq.Header.Set("Authorization", "Bearer "+responseUser.user.refresh_token)
+	handler.ServeHTTP(authRecorder, authReq)
+	validateResponseCode(t, http.StatusOK, authRecorder.Result().StatusCode)
+
+	authUser := validateGetUser(t, authRecorder.Body.Bytes(), user)
+
 	// update name
 	user.Set("name", "No Longer Tester")
 	user.Add("userId", fmt.Sprintf("%d", responseUser.user.id))
@@ -212,7 +232,7 @@ func TestCreateUpdateAndDeleteUser(t *testing.T) {
 	// handle successful update
 	errorIfExists(t, updateErr)
 	updateReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	updateReq.Header.Set("Authorization", "Bearer "+responseUser.user.refresh_token)
+	updateReq.Header.Set("Authorization", "Bearer "+authUser.user.access_token)
 	handler.ServeHTTP(updateRecorder, updateReq)
 	validateResponseCode(t, http.StatusOK, updateRecorder.Result().StatusCode)
 
@@ -230,7 +250,7 @@ func TestCreateUpdateAndDeleteUser(t *testing.T) {
 
 	errorIfExists(t, deleteErr)
 	deleteReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	deleteReq.Header.Set("Authorization", "Bearer "+responseUser.user.refresh_token)
+	deleteReq.Header.Set("Authorization", "Bearer "+authUser.user.access_token)
 	handler.ServeHTTP(deleteRecorder, deleteReq)
 	validateResponseCode(t, http.StatusOK, deleteRecorder.Result().StatusCode)
 
@@ -332,6 +352,10 @@ func validateGetUser(t *testing.T, responseBody []byte, user url.Values) respons
 
 	if responseUserBody["refresh_token"] != nil {
 		response.user.refresh_token = responseUserBody["refresh_token"].(string)
+	}
+
+	if responseUserBody["access_token"] != nil {
+		response.user.access_token = responseUserBody["access_token"].(string)
 	}
 
 	validateCode(t, response.code)

@@ -23,8 +23,8 @@ type User struct {
 	Name         string          `json:"name" db:"name"`
 	FacebookId   types.NullInt64 `json:"facebook_id,omitempty" db:"facebook_id"`
 	Active       int             `json:"active" db:"is_active"`
-	RefreshToken string          `json:"refresh_token,omitempty" db:"refresh_token"`
-	AccessToken  string          `json:"access_token,omitempty" db:"access_token"`
+	RefreshToken string          `json:"refresh_token,omitempty" db:"-"`
+	AccessToken  string          `json:"access_token,omitempty" db:"-"`
 	CreatedAt    string          `json:"created_at,omitempty" db:"-"`
 	UpdatedAt    string          `json:"updated_at,omitempty" db:"-"`
 }
@@ -51,7 +51,7 @@ func (u *User) Save() (int64, error) {
 func (u *User) Update() error {
 	columns, values := u.GetUserColumnStringAndValues(false, false)
 
-	return UserUpdateValues(u.Id, columns, values, true)
+	return UserUpdateValues(u.Id, columns, values)
 }
 
 /**
@@ -157,12 +157,12 @@ func (u *User) AddRefreshToken() {
 	tokenString, err := auth.CreateUserToken(u.Id, 1, "refresh")
 
 	if err == nil {
-		u.RefreshToken = tokenString
-
 		err = UserInsertRefreshToken(u.Id, tokenString)
 	}
 
-	if err != nil {
+	if err == nil {
+		u.RefreshToken = tokenString
+	} else {
 		log.Println(err)
 	}
 }
@@ -174,6 +174,12 @@ func (u *User) AddAccessToken() {
 	tokenString, err := auth.CreateUserToken(u.Id, 1, "access")
 
 	if err == nil {
+		err = UserUpdateTokens(u.Id, tokenString, "")
+	}
+
+	if err == nil {
 		u.AccessToken = tokenString
+	} else {
+		log.Println(err)
 	}
 }

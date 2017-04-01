@@ -51,7 +51,7 @@ func GetUserIdFromAccessToken(stringToken string) (int64, bool) {
 		return 0, false
 	}
 
-	tokenTime := claims["ts"].(int64)
+	tokenTime := int64(claims["ts"].(float64))
 	if (tokenTime + ACCESS_TOKEN_LIFETIME) < time.Now().Unix() {
 		// access token is expired
 		return 0, false
