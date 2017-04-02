@@ -33,7 +33,7 @@ type User struct {
  * Save the new user in the DB
  */
 func (u *User) Save() (int64, error) {
-	columns, values := u.GetUserColumnStringAndValues(false, true)
+	columns, values := u.getUserColumnStringAndValues()
 	columns += ", password"
 	values = append(values, u.GetPassword())
 
@@ -49,7 +49,7 @@ func (u *User) Save() (int64, error) {
  * Update the user in the db
  */
 func (u *User) Update() error {
-	columns, values := u.GetUserColumnStringAndValues(false, false)
+	columns, values := u.getUserColumnStringAndValues()
 
 	return UserUpdateValues(u.Id, columns, values)
 }
@@ -71,7 +71,7 @@ func (u *User) GetPassword() string {
 /**
  * Get the saveable property and value stubs for a db insert/update
  */
-func (u *User) GetUserColumnStringAndValues(includeID, includePW bool) (string, []interface{}) {
+func (u *User) getUserColumnStringAndValues() (string, []interface{}) {
 	var columns string
 	var values []interface{}
 
@@ -82,15 +82,11 @@ func (u *User) GetUserColumnStringAndValues(includeID, includePW bool) (string, 
 	for i := 0; i < userElem.NumField(); i++ {
 		columnName := userType.Field(i).Tag.Get("db")
 
-		if !includeID && columnName == "id" {
+		if columnName == "id" || columnName == "password" || columnName == "-" {
 			continue
 		}
 
-		if columnName == "password" || columnName == "-" {
-			continue
-		}
-
-		columns += fmt.Sprintf("%s, ", userType.Field(i).Tag.Get("db"))
+		columns += fmt.Sprintf("%s, ", columnName)
 		values = append(values, userElem.Field(i).Interface())
 	}
 
